@@ -27,8 +27,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdio.h>
-#include <string.h>
-#include "MQTTClient.h"
 
 using namespace std;
 
@@ -64,15 +62,8 @@ namespace exploringRPi {
 #define DATAZ0         0x36   //Z-axis Data 0
 #define DATAZ1         0x37   //Z-axis Data 1
 #define FIFO_CTL       0x38   //FIFO control
-#define FIFO_STATUS    0x39   //FIFO status  
-//Next lines are for the MQTT 
-#define ADDRESS    "tcp://192.168.1.16:1883"
-#define CLIENTID   "rpi2"
-#define AUTHMETHOD "david"
-#define AUTHTOKEN  "cervelo"
-#define TOPIC      "ee513/CPUTemp"
-#define QOS        2
-#define TIMEOUT    10000L                                                                   
+#define FIFO_STATUS    0x39   //FIFO status
+
 /**
  * Method to combine two 8-bit registers into a single short, which is 16-bits on the Raspberry Pi. It shifts
  * the MSB 8-bits to the left and then ORs the result with the LSB.
@@ -187,8 +178,6 @@ void ADXL345::setResolution(ADXL345::RESOLUTION resolution) {
 	updateRegisters();
 }
 
-
-
 /**
  * Useful debug method to display the pitch and roll values in degrees on a single standard output line
  * @param iterations The number of 0.1s iterations to take place.
@@ -196,41 +185,11 @@ void ADXL345::setResolution(ADXL345::RESOLUTION resolution) {
 void ADXL345::displayPitchAndRoll(int iterations){
 	int count = 0;
 	while(count < iterations){
-	   char str_payload[100];          // Set your max message size here
-           MQTTClient client;
-           MQTTClient_connectOptions opts = MQTTClient_connectOptions_initializer;
-           MQTTClient_message pubmsg = MQTTClient_message_initializer;
-           MQTTClient_deliveryToken token;
-           MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
-           opts.keepAliveInterval = 20;
-           opts.cleansession = 1;
-           opts.username = AUTHMETHOD;
-           opts.password = AUTHTOKEN;
-           int rc;
-           if ((rc = MQTTClient_connect(client, &opts)) != MQTTCLIENT_SUCCESS) {
-              cout << "Failed to connect, return code " << rc << endl;
-              //return -1;
-           }
-           sprintf(str_payload, "{\"d\":{\"Pitch\":, \"Roll\": %f, %f }}", this->getPitch(), this->getRoll());
-	   pubmsg.payload = str_payload;
-           pubmsg.payloadlen = strlen(str_payload);
-           pubmsg.qos = QOS;
-           pubmsg.retained = 0;
-           MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-//   cout << "Waiting for up to " << (int)(TIMEOUT/1000) <<
-//        " seconds for publication of " << str_payload <<
-//        " \non topic " << TOPIC << " for ClientID: " << CLIENTID << endl;
-           rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-           //cout << "Message with token " << (int)token << " delivered." << endl;
-           MQTTClient_disconnect(client, 10000);
-           MQTTClient_destroy(&client);
-           //return rc;
 	      cout << "Pitch:"<< this->getPitch() << " Roll:" << this->getRoll() << "     \r"<<flush;
 	      usleep(100000);
 	      this->readSensorState();
 	      count++;
-	   }
-	
+	}
 }
 
 ADXL345::~ADXL345() {}

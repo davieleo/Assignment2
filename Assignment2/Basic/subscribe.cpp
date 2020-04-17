@@ -3,10 +3,10 @@
 #include "string.h"
 #include "MQTTClient.h"
 
-#define ADDRESS     "tcp://192.168.1.19:1883"
-#define CLIENTID    "rpi2"
-#define AUTHMETHOD  "david"
-#define AUTHTOKEN   "Rory.2016"
+#define ADDRESS     "tcp://192.168.1.16:1883"
+#define CLIENTID    "rpi1"
+#define AUTHMETHOD  "molloyd"
+#define AUTHTOKEN   "password"
 #define TOPIC       "ee513/CPUTemp"
 #define PAYLOAD     "Hello World!"
 #define QOS         1

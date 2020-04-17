@@ -30,10 +30,12 @@
 #include <string.h>
 #include "MQTTClient.h"
 
+
 using namespace std;
 
 namespace exploringRPi {
-
+int TDT;
+char ST, DT = false;
 //From Table 19. of the ADXL345 Data sheet
 #define DEVID          0x00   //Device ID
 #define THRESH_TAP     0x1D   //Tap Threshold
@@ -67,11 +69,11 @@ namespace exploringRPi {
 #define FIFO_STATUS    0x39   //FIFO status  
 //Next lines are for the MQTT 
 #define ADDRESS    "tcp://192.168.1.16:1883"
-#define CLIENTID   "rpi2"
+#define CLIENTID   "rpi1"
 #define AUTHMETHOD "david"
-#define AUTHTOKEN  "cervelo"
-#define TOPIC      "ee513/CPUTemp"
-#define QOS        2
+#define AUTHTOKEN  "passwd"
+#define TOPIC      "ee513/TDT"
+#define QOS        1
 #define TIMEOUT    10000L                                                                   
 /**
  * Method to combine two 8-bit registers into a single short, which is 16-bits on the Raspberry Pi. It shifts
@@ -111,6 +113,7 @@ void ADXL345::calculatePitchAndRoll(){
 	this->roll = 180 * atan(accYg/sqrt(accXSquared + accZSquared))/M_PI;
 }
 
+
 /**
  * Method used to update the DATA_FORMAT register and any other registers that might be added
  * in the future.
@@ -119,10 +122,12 @@ void ADXL345::calculatePitchAndRoll(){
 int ADXL345::updateRegisters(){
    //update the DATA_FORMAT register
    char data_format = 0x00;  //+/- 2g with normal resolution
+ 
    //Full_resolution is the 3rd LSB
    data_format = data_format|((this->resolution)<<3);
    data_format = data_format|this->range; // 1st and 2nd LSB therefore no shift
    return this->writeRegister(DATA_FORMAT, data_format);
+
 }
 
 /**
@@ -142,6 +147,13 @@ ADXL345::ADXL345(unsigned int I2CBus, unsigned int I2CAddress):
 	this->pitch = 0.0f;
 	this->roll = 0.0f;
 	this->registers = NULL;
+        this->writeRegister(TAP_AXES, 0x01); //tap and double tap setting
+        this->writeRegister(INT_ENABLE, 0x60);
+        this->writeRegister(THRESH_TAP, 20);
+        this->writeRegister(DUR, 32);
+        this->writeRegister(LATENT, 80);
+        this->writeRegister(WINDOW, 240);
+        this->writeRegister(THRESH_ACT, 0xf0); //end of tap and double tap setting
 	this->range = ADXL345::PLUSMINUS_16_G;
 	this->resolution = ADXL345::HIGH;
 	this->writeRegister(POWER_CTL, 0x08);
@@ -166,6 +178,7 @@ int ADXL345::readSensorState(){
 	this->resolution = (ADXL345::RESOLUTION) (((*(registers+DATA_FORMAT))&0x08)>>3);
 	this->range = (ADXL345::RANGE) ((*(registers+DATA_FORMAT))&0x03);
 	this->calculatePitchAndRoll();
+	
 	return 0;
 }
 
@@ -195,9 +208,11 @@ void ADXL345::setResolution(ADXL345::RESOLUTION resolution) {
  */
 void ADXL345::displayPitchAndRoll(int iterations){
 	int count = 0;
+	
 	while(count < iterations){
-	   char str_payload[100];          // Set your max message size here
-           MQTTClient client;
+	
+	   char str_payload[100];       // Set your max message size here
+	   MQTTClient client;
            MQTTClient_connectOptions opts = MQTTClient_connectOptions_initializer;
            MQTTClient_message pubmsg = MQTTClient_message_initializer;
            MQTTClient_deliveryToken token;
@@ -205,30 +220,38 @@ void ADXL345::displayPitchAndRoll(int iterations){
            opts.keepAliveInterval = 20;
            opts.cleansession = 1;
            opts.username = AUTHMETHOD;
-           opts.password = AUTHTOKEN;
+           //opts.password = AUTHTOKEN;
            int rc;
            if ((rc = MQTTClient_connect(client, &opts)) != MQTTCLIENT_SUCCESS) {
               cout << "Failed to connect, return code " << rc << endl;
-              //return -1;
+
            }
-           sprintf(str_payload, "{\"d\":{\"Pitch\":, \"Roll\": %f, %f }}", this->getPitch(), this->getRoll());
+	   TDT = ((readRegister(INT_SOURCE)>>5) & 3);
+	    if (TDT==2){
+		      ST ='2';
+		      DT ='0';
+	      }
+	      if (TDT==3){
+		      ST='0';
+		      DT='2';
+	      }
+	      if (TDT==0){
+		      ST='0';
+		      DT='0';
+	      }
+           sprintf(str_payload, "{\"SetTDT\":{\"T\": %i, \"DT\": %i}}", ST, DT);
 	   pubmsg.payload = str_payload;
            pubmsg.payloadlen = strlen(str_payload);
            pubmsg.qos = QOS;
            pubmsg.retained = 0;
            MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-//   cout << "Waiting for up to " << (int)(TIMEOUT/1000) <<
-//        " seconds for publication of " << str_payload <<
-//        " \non topic " << TOPIC << " for ClientID: " << CLIENTID << endl;
            rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-           //cout << "Message with token " << (int)token << " delivered." << endl;
            MQTTClient_disconnect(client, 10000);
            MQTTClient_destroy(&client);
-           //return rc;
-	      cout << "Pitch:"<< this->getPitch() << " Roll:" << this->getRoll() << "     \r"<<flush;
-	      usleep(100000);
-	      this->readSensorState();
-	      count++;
+ 	   cout << " Tap: " << ST << " Doubletap: " << DT << " INT_SOURCE " << TDT << " \r"<<flush;
+	   usleep(100000);
+	   this->readSensorState();
+	   count++;
 	   }
 	
 }

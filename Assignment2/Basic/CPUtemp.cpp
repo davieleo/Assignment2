@@ -9,9 +9,9 @@ using namespace std;
 
 //Please replace the following address with the address of your server
 #define ADDRESS    "tcp://192.168.1.16:1883"
-#define CLIENTID   "rpi2"
-#define AUTHMETHOD "david"
-#define AUTHTOKEN  "cervelo"
+#define CLIENTID   "rpi1"
+#define AUTHMETHOD "molloyd"
+#define AUTHTOKEN  "password"
 #define TOPIC      "ee513/CPUTemp"
 #define QOS        1
 #define TIMEOUT    10000L

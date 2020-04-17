@@ -67,11 +67,11 @@ namespace exploringRPi {
 #define FIFO_STATUS    0x39   //FIFO status  
 //Next lines are for the MQTT 
 #define ADDRESS    "tcp://192.168.1.16:1883"
-#define CLIENTID   "rpi2"
+#define CLIENTID   "rpi1"
 #define AUTHMETHOD "david"
-#define AUTHTOKEN  "cervelo"
-#define TOPIC      "ee513/CPUTemp"
-#define QOS        2
+#define AUTHTOKEN  "passwd"
+#define TOPIC      "ee513/PR"
+#define QOS        1
 #define TIMEOUT    10000L                                                                   
 /**
  * Method to combine two 8-bit registers into a single short, which is 16-bits on the Raspberry Pi. It shifts
@@ -205,13 +205,13 @@ void ADXL345::displayPitchAndRoll(int iterations){
            opts.keepAliveInterval = 20;
            opts.cleansession = 1;
            opts.username = AUTHMETHOD;
-           opts.password = AUTHTOKEN;
+           //opts.password = AUTHTOKEN;
            int rc;
            if ((rc = MQTTClient_connect(client, &opts)) != MQTTCLIENT_SUCCESS) {
               cout << "Failed to connect, return code " << rc << endl;
               //return -1;
            }
-           sprintf(str_payload, "{\"d\":{\"Pitch\":, \"Roll\": %f, %f }}", this->getPitch(), this->getRoll());
+           sprintf(str_payload, "{\"PR\":{\"Pitch\" : %f,\"Roll\" : %f }}", getPitch(), getRoll());
 	   pubmsg.payload = str_payload;
            pubmsg.payloadlen = strlen(str_payload);
            pubmsg.qos = QOS;
@@ -225,10 +225,10 @@ void ADXL345::displayPitchAndRoll(int iterations){
            MQTTClient_disconnect(client, 10000);
            MQTTClient_destroy(&client);
            //return rc;
-	      cout << "Pitch:"<< this->getPitch() << " Roll:" << this->getRoll() << "     \r"<<flush;
-	      usleep(100000);
-	      this->readSensorState();
-	      count++;
+	   cout << "Pitch:"<< this->getPitch() << " Roll:" << this->getRoll() << "     \r"<<flush;
+	   usleep(100000);
+	   this->readSensorState();
+	   count++;
 	   }
 	
 }
